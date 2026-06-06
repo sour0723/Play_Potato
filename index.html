@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>瘋狂挖土豆大賽 - 風鏡隨堂測驗特製版</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #8B5A2B; 
+            background-image: radial-gradient(#a06d3b 20%, transparent 20%),
+                              radial-gradient(#734419 20%, transparent 20%);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #fff;
+            user-select: none;
+            -webkit-user-select: none;
+            box-sizing: border-box;
+            min-height: 100vh;
+        }
+
+        h1 {
+            text-shadow: 2px 2px 4px #000;
+            margin: 10px 0;
+            font-size: 1.8rem;
+            text-align: center;
+        }
+
+        #score-board {
+            display: flex;
+            gap: 15px;
+            font-size: 1rem;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 360px;
+            justify-content: space-around;
+            box-sizing: border-box;
+        }
+
+        .highlight {
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        #field {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            background: #5c3a1a;
+            padding: 15px;
+            border-radius: 15px;
+            border: 5px solid #3d240f;
+            box-shadow: inset 0 0 20px #000, 0 10px 20px rgba(0,0,0,0.5);
+            position: relative;
+            width: 90vw;
+            max-width: 360px; 
+            height: 90vw;
+            max-height: 360px; 
+            box-sizing: border-box;
+            touch-action: manipulation; 
+        }
+
+        #field.paused::after {
+            content: "遊戲暫停中";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            color: #FFD700;
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .plot {
+            background: #402812;
+            border-radius: 50%;
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.6);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .item {
+            width: 80%;
+            height: 80%;
+            position: absolute;
+            bottom: -100%; 
+            left: 10%;
+            transition: bottom 0.1s ease-out;
+            cursor: pointer;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .item::before {
+            content: attr(data-text);
+            font-size: 11vw; 
+        }
+        @media (min-width: 400px) {
+            .item::before { font-size: 45px; } 
+        }
+
+        .item.up {
+            bottom: 10%;
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 360px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 0;
+            font-size: 1.1rem;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.1s;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        #start-btn { background-color: #4CAF50; box-shadow: 0 5px #2E7D32; }
+        #start-btn:active:not(:disabled) { box-shadow: 0 2px #2E7D32; transform: translateY(3px); }
+
+        #pause-btn { background-color: #FF9800; box-shadow: 0 5px #E65100; }
+        #pause-btn:active:not(:disabled) { box-shadow: 0 2px #E65100; transform: translateY(3px); }
+
+        button:disabled {
+            background-color: #888 !important;
+            box-shadow: 0 5px #555 !important;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .effect {
+            position: absolute;
+            color: #FFD700;
+            font-weight: bold;
+            font-size: 20px;
+            animation: floatUp 0.6s ease-out forwards;
+            pointer-events: none;
+            text-shadow: 2px 2px 2px #000;
+            z-index: 5;
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-30px); opacity: 0; }
+        }
+
+        /* 彈出視窗底層遮罩 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; 
+            width: 100vw; height: 100vh; 
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center; 
+            align-items: center;     
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: #fff;
+            color: #333;
+            padding: 25px;
+            border-radius: 20px;
+            width: 85%;
+            max-width: 340px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            transform: scale(0.7);
+            transition: transform 0.3s ease;
+            box-sizing: border-box; 
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: #8B5A2B;
+            font-size: 1.5rem;
+        }
+
+        .modal-score-details {
+            background: #f5f5f5;
+            padding: 12px;
+            border-radius: 10px;
+            margin: 15px 0;
+            font-size: 1rem;
+            text-align: left;
+        }
+
+        .modal-score-details p {
+            margin: 8px 0;
+        }
+
+        .modal-btns {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            padding: 10px 0;
+            font-size: 0.95rem;
+            border-radius: 20px;
+            box-shadow: none;
+            flex: 1;
+        }
+        .btn-restart { background-color: #4CAF50; }
+        .btn-close { background-color: #777; }
+
+        /* ─── 測驗系統專用樣式 ─── */
+        #quiz-section {
+            display: none;
+            text-align: left;
+        }
+        .quiz-progress {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .quiz-question {
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+        .quiz-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .option-btn {
+            background-color: #f0f0f0;
+            color: #333;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 10px 15px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            flex: none;
+        }
+        .option-btn:active {
+            background-color: #e0e0e0;
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🥔 瘋狂挖土豆大賽 🥔</h1>
+    
+    <div id="score-board">
+        <div>時間: <span id="time-left" class="highlight">30</span> 秒</div>
+        <div>分數: <span id="score" class="highlight">0</span></div>
+        <div>連擊: <span id="combo" class="highlight">0</span></div>
+    </div>
+
+    <div id="field">
+        <div class="plot"><div class="item"></div></div>
+        <div class="plot"><div class="item"></div></div>
+        <div class="plot"><div class="item"></div></div>
+        <div class="plot"><div class="item"></div></div>
+        <div class="plot"><div class="item"></div></div>
+        <div class="plot"><div class="item"></div></div>
+        <div class="plot"><div class="item"></div></div>
+        <div class="plot"><div class="item"></div></div>
+        <div class="plot"><div class="item"></div></div>
+    </div>
+
+    <div class="btn-container">
+        <button id="start-btn">開始遊戲</button>
+        <button id="pause-btn" disabled>暫停</button>
+    </div>
+
+    <!-- 自訂互動對話框（整合農作結算與隨堂測驗） -->
+    <div class="modal-overlay" id="result-modal">
+        <div class="modal-content">
+            <!-- 區塊 A：秋收結算（挖土豆完顯示，並引導至測驗） -->
+            <div id="harvest-section">
+                <h2>秋收結算 👩‍🌾</h2>
+                <div class="modal-score-details" style="text-align: center;">
+                    <p>挖土豆得分：<span id="final-score" style="color:#e67e22; font-weight:bold; font-size:1.3rem;">0</span> 分</p>
+                    <p>農夫評價：<span id="final-eval" style="font-weight:bold;">繼續努力</span></p>
+                </div>
+                <div class="modal-btns">
+                    <button class="modal-btn btn-restart" id="go-quiz-btn" style="background-color: #FF9800;">進入風鏡隨堂測驗 📝</button>
+                </div>
+            </div>
+
+            <!-- 區塊 B：風鏡 Q&A 隨堂小測驗 進行中 -->
+            <div id="quiz-section">
+                <h2>風鏡隨堂測驗 📝</h2>
+                <div class="quiz-progress">題目：<span id="current-question-num">1</span> / 10</div>
+                <div class="quiz-question" id="quiz-question-text">題目載入中...</div>
+                <div class="quiz-options" id="quiz-options-container">
+                    <!-- 選項按鈕動態生成 -->
+                </div>
+            </div>
+
+            <!-- 區塊 C：最終測驗結算 -->
+            <div id="quiz-result-section" style="display: none;">
+                <h2>測驗總結算 🎓</h2>
+                <div class="modal-score-details">
+                    <p>農作得分：<span id="quiz-res-harvest-score" style="font-weight:bold; color:#e67e22;">0</span> 分</p>
+                    <p>測驗得分：<span id="quiz-res-score" style="font-weight:bold; color:#2ecc71; font-size:1.3rem;">0</span> 分</p>
+                    <hr style="border:0; border-top:1px solid #ddd; margin:10px 0;">
+                    <p style="font-weight:bold; text-align:center; line-height:1.4;" id="quiz-res-eval">回應載入中...</p>
+                </div>
+                <div class="modal-btns">
+                    <button class="modal-btn btn-restart" id="modal-restart-btn">再玩一次</button>
+                    <button class="modal-btn btn-close" id="modal-close-btn">關閉</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ─── 題庫資料 ───
+        const allQuestions = [
+            { q: "請問風鏡的生日是？", a: "11月8日", options: ["11月8日", "1月18日", "11月18日"] },
+            { q: "風鏡偏愛錄的角色是？", a: "古風", options: ["古風", "刑偵", "科幻"] },
+            { q: "風鏡的星座是？", a: "天蠍", options: ["天蠍", "獅子", "牡羊"] },
+            { q: "風鏡對粉絲的暱稱是？", a: "土豆", options: ["土豆", "寶貝", "小可愛"] },
+            { q: "風鏡說過她唯一的寶是哪一個角色？", a: "藍山", options: ["藍山", "景琇", "薛桐"] },
+            { q: "風鏡為以下哪一部廣播劇配過音？", a: "中年戀愛補丁", options: ["中年戀愛補丁", "打卦", "林視狼顧"] },
+            { q: "風鏡在2025年開播的廣播劇有幾部？", a: "2", options: ["1", "2", "3"] },
+            { q: "下面哪一個不是風鏡的愛好？", a: "籃球", options: ["考古", "籃球", "小提琴"] },
+            { q: "以下哪句話不是風鏡寫過的？", a: "持之以恆，必能夢想成真", options: ["願來日可期，一切順意", "萬事只求本心", "持之以恆，必能夢想成真"] },
+            { q: "風鏡是從事哪個行業？", a: "金融業", options: ["金融業", "服務業", "科技業"] },
+            { q: "以下哪一部廣播劇風鏡沒有參與？", a: "神龕", options: ["今日離港", "神龕", "全世界都在等你心動"] },
+            { q: "以下風鏡配的角色敘述哪一個正確？", a: "《月亮和蟬 》杭澈", options: ["《小姐不凶》莫閑", "《月亮和蟬 》杭澈", "《她屬於我》姜瓷"] },
+            { q: "以下哪一本書沒有在直播中被風鏡抽到並讀過？", a: "寶可夢大圖鑑1025", options: ["哈利波特與歷史", "人間煙火：掩埋在歷史裡的日常與人生", "寶可夢大圖鑑1025"] },
+            { q: "以下哪一個城市風鏡沒有去過？", a: "埃及", options: ["雲南", "埃及", "青島"] },
+            { q: "以下哪一個遊戲風鏡沒有玩過？", a: "跑跑卡丁車", options: ["消消樂", "跑跑卡丁車", "密室逃脫"] },
+            { q: "風鏡在直播中說過吃火鍋必點的三樣菜是？", a: "腦花、白菜、牛肚", options: ["腦花、白菜、牛肚", "蘑菇", "南瓜", "玉米", "番茄", "河鮮", "土豆"], processedOpts: ["腦花、白菜、牛肚", "蘑菇、南瓜、玉米", "番茄、河鮮、土豆"] }, // 特別處理第16題的複雜文字
+            { q: "風鏡通常都什麼時候開個人直播？", a: "不要猜測她的心思，想播的時候就播", options: ["有廣播劇宣傳的時候", "不要猜測她的心思，想播的時候就播", "特殊節日的時候"] },
+            { q: "風鏡都打什麼球？", a: "壘球", options: ["棒球", "乒乓球", "壘球"] },
+            { q: "以下哪種酒風鏡不喝？", a: "啤酒", options: ["白酒", "米酒", "啤酒"] },
+            { q: "風鏡在百戰成詩配唱的角色是？", a: "諸葛亮", options: ["虞姬", "諸葛亮", "鍾無艷"] }
+        ];
+
+        // 校正第16題選項格式
+        allQuestions[15].options = allQuestions[15].processedOpts;
+
+        const field = document.getElementById('field');
+        const plots = document.querySelectorAll('.plot');
+        const items = document.querySelectorAll('.item');
+        const scoreDisplay = document.getElementById('score');
+        const timeDisplay = document.getElementById('time-left');
+        const comboDisplay = document.getElementById('combo');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+
+        // 彈窗內各個功能區塊
+        const resultModal = document.getElementById('result-modal');
+        const harvestSection = document.getElementById('harvest-section');
+        const quizSection = document.getElementById('quiz-section');
+        const quizResultSection = document.getElementById('quiz-result-section');
+
+        // 數據欄位
+        const finalScore = document.getElementById('final-score');
+        const finalEval = document.getElementById('final-eval');
+        const goQuizBtn = document.getElementById('go-quiz-btn');
+        const currentQuestionNumDisplay = document.getElementById('current-question-num');
+        const quizQuestionText = document.getElementById('quiz-question-text');
+        const quizOptionsContainer = document.getElementById('quiz-options-container');
+
+        const quizResHarvestScore = document.getElementById('quiz-res-harvest-score');
+        const quizResScore = document.getElementById('quiz-res-score');
+        const quizResEval = document.getElementById('quiz-res-eval');
+
+        const modalRestartBtn = document.getElementById('modal-restart-btn');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+
+        let score = 0;
+        let combo = 0;
+        let timeLeft = 30; 
+        let gameInterval;
+        let itemInterval;
+        let isPlaying = false;
+        let isPaused = false; 
+        let lastPlot;
+
+        // 測驗專用變數
+        let selectedQuestions = [];
+        let currentQuestionIdx = 0;
+        let quizScore = 0;
+
+        function randomTime(min, max) {
+            return Math.round(Math.random() * (max - min) + min);
+        }
+
+        function randomPlot(plots) {
+            const idx = Math.floor(Math.random() * plots.length);
+            const plot = plots[idx];
+            if (plot === lastPlot) {
+                return randomPlot(plots);
+            }
+            lastPlot = plot;
+            return plot;
+        }
+
+        function popUp() {
+            if (!isPlaying || isPaused) return;
+
+            const time = randomTime(600, 1200);
+            const plot = randomPlot(plots);
+            const item = plot.querySelector('.item');
+            
+            const rand = Math.random();
+            if (rand < 0.2) {
+                item.setAttribute('data-text', '💣');
+                item.style.backgroundImage = 'none';
+                item.dataset.type = 'bomb';
+            } else if (rand < 0.3) {
+                item.setAttribute('data-text', '');
+                item.style.backgroundImage = 'url("https://i.meee.com.tw/R14zA1Q.png")';
+                item.dataset.type = 'secret';
+            } else {
+                item.setAttribute('data-text', '🥔');
+                item.style.backgroundImage = 'none';
+                item.dataset.type = 'potato';
+            }
+            
+            item.classList.add('up');
+
+            item.activeTimeout = setTimeout(() => {
+                if (!isPaused) item.classList.remove('up');
+            }, time);
+        }
+
+        function startGame() {
+            if (isPlaying) return;
+            
+            resultModal.classList.remove('active');
+            harvestSection.style.display = 'block';
+            quizSection.style.display = 'none';
+            quizResultSection.style.display = 'none';
+
+            score = 0;
+            combo = 0;
+            timeLeft = 30; 
+            isPlaying = true;
+            isPaused = false;
+            scoreDisplay.textContent = score;
+            comboDisplay.textContent = combo;
+            timeDisplay.textContent = timeLeft;
+            
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            pauseBtn.textContent = "暫停";
+            field.classList.remove('paused');
+
+            gameInterval = setInterval(() => {
+                if (!isPaused) {
+                    timeLeft--;
+                    timeDisplay.textContent = timeLeft;
+                    if (timeLeft <= 0) endGame();
+                }
+            }, 1000);
+
+            function loop() {
+                if (!isPlaying) return;
+                popUp();
+                let speed = timeLeft > 10 ? randomTime(400, 900) : randomTime(200, 500);
+                itemInterval = setTimeout(loop, speed);
+            }
+            loop();
+        }
+
+        function togglePause() {
+            if (!isPlaying) return;
+
+            if (!isPaused) {
+                isPaused = true;
+                pauseBtn.textContent = "恢復";
+                field.classList.add('paused');
+                clearTimeout(itemInterval); 
+                items.forEach(item => { if (item.activeTimeout) clearTimeout(item.activeTimeout); });
+            } else {
+                isPaused = false;
+                pauseBtn.textContent = "暫停";
+                field.classList.remove('paused');
+
+                items.forEach(item => {
+                    if (item.classList.contains('up')) {
+                        item.activeTimeout = setTimeout(() => { if (!isPaused) item.classList.remove('up'); }, 500);
+                    }
+                });
+
+                let speed = timeLeft > 10 ? randomTime(400, 900) : randomTime(200, 500);
+                itemInterval = setTimeout(function loop() {
+                    if (!isPlaying || isPaused) return;
+                    popUp();
+                    let nextSpeed = timeLeft > 10 ? randomTime(400, 900) : randomTime(200, 500);
+                    itemInterval = setTimeout(loop, nextSpeed);
+                }, speed);
+            }
+        }
+
+        function endGame() {
+            isPlaying = false;
+            isPaused = false;
+            clearInterval(gameInterval);
+            clearTimeout(itemInterval);
+            items.forEach(item => {
+                item.classList.remove('up');
+                if (item.activeTimeout) clearTimeout(item.activeTimeout);
+            });
+            
+            startBtn.disabled = false;
+            pauseBtn.disabled = true;
+            pauseBtn.textContent = "暫停";
+            field.classList.remove('paused');
+            
+            let evaluation = "繼續努力！";
+            if (score >= 100) evaluation = "土豆粉是最島的！👑";
+            else if (score >= 50) evaluation = "唉唷！不錯唷！👨‍🌾再接再厲";
+            else if (score >= 25) evaluation = "新🥔報到！";
+
+            finalScore.textContent = score;
+            finalEval.textContent = evaluation;
+            
+            // 顯示秋收面板
+            harvestSection.style.display = 'block';
+            quizSection.style.display = 'none';
+            quizResultSection.style.display = 'none';
+            resultModal.classList.add('active');
+        }
+
+        function hit(e) {
+            if (!isPlaying || isPaused) return; 
+            const item = this.querySelector('.item');
+            if (!item.classList.contains('up')) return; 
+
+            item.classList.remove('up'); 
+            if (item.activeTimeout) clearTimeout(item.activeTimeout);
+            
+            const effect = document.createElement('span');
+            effect.classList.add('effect');
+
+            if (item.dataset.type === 'potato') {
+                combo++;
+                let scoreGained = combo >= 5 ? 2 : 1;
+                score += scoreGained;
+                effect.textContent = combo >= 5 ? `+2 Combo!` : `+1`;
+                effect.style.color = '#FFD700';
+            } else if (item.dataset.type === 'bomb') {
+                combo = 0;
+                score = Math.max(0, score - 5);
+                effect.textContent = `-5 💥`;
+                effect.style.color = '#FF3B30';
+            } else if (item.dataset.type === 'secret') {
+                combo++;
+                let scoreGained = combo >= 5 ? 20 : 10;
+                score += scoreGained;
+                effect.textContent = combo >= 5 ? `+20 Combo!` : `+10`;
+                effect.style.color = '#FF1493'; 
+            }
+
+            effect.style.left = `${e.offsetX || 20}px`;
+            effect.style.top = `${e.offsetY || 20}px`;
+            this.appendChild(effect);
+            setTimeout(() => effect.remove(), 600);
+
+            scoreDisplay.textContent = score;
+            comboDisplay.textContent = combo;
+        }
+
+        // ─── 測驗系統邏輯 ───
+        function initQuiz() {
+            harvestSection.style.display = 'none';
+            quizSection.style.display = 'block';
+            
+            // 隨機抽取 10 題
+            const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+            selectedQuestions = shuffled.slice(0, 10);
+            
+            currentQuestionIdx = 0;
+            quizScore = 0;
+            
+            showQuestion();
+        }
+
+        function showQuestion() {
+            currentQuestionNumDisplay.textContent = currentQuestionIdx + 1;
+            const currentQ = selectedQuestions[currentQuestionIdx];
+            quizQuestionText.textContent = currentQ.q;
+            
+            // 清空舊選項
+            quizOptionsContainer.innerHTML = '';
+            
+            // 亂數排序選項
+            const shuffledOptions = [...currentQ.options].sort(() => 0.5 - Math.random());
+            
+            shuffledOptions.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.classList.add('option-btn');
+                btn.textContent = opt;
+                btn.addEventListener('click', () => handleAnswer(opt, currentQ.a));
+                quizOptionsContainer.appendChild(btn);
+            });
+        }
+
+        function handleAnswer(selected, correct) {
+            if (selected === correct) {
+                quizScore += 10;
+            }
+            
+            currentQuestionIdx++;
+            if (currentQuestionIdx < 10) {
+                showQuestion();
+            } else {
+                showQuizResult();
+            }
+        }
+
+        function showQuizResult() {
+            quizSection.style.display = 'none';
+            quizResultSection.style.display = 'block';
+            
+            quizResHarvestScore.textContent = score;
+            quizResScore.textContent = quizScore;
+            
+            // 根據不同分數給予有趣的互動回應
+            let evalText = "";
+            if (quizScore === 100) {
+                evalText = "這絕對是真愛！<br><span style='color:#e74c3c; font-size:1.2rem;'>土豆粉中最島的非你莫屬！👑</span>";
+            } else if (quizScore >= 81) {
+                evalText = "唉唷！不錯唷！<br><span style='color:#e67e22;'>看來你對風鏡瞭若指掌呢！🤙</span>";
+            } else if (quizScore >= 60) {
+                evalText = "你是一位的合格土豆！<br><span style='color:#f1c40f;'>繼續一起追風鏡吧！🥔</span>";
+            } else if (quizScore >= 31) {
+                evalText = "差一點點！<br><span style='color:#3498db;'>回去罰聽廣播劇和直播回放三遍！🎧</span>";
+            } else {
+                evalText = "你真的是土豆嗎？<br><span style='color:#95a5a6;'>該不會是披著土豆皮的番茄吧！🍅</span>";
+            }
+            
+            quizResEval.innerHTML = evalText;
+        }
+
+        // ─── 事件監聽 ───
+        plots.forEach(plot => plot.addEventListener('click', hit));
+        startBtn.addEventListener('click', startGame);
+        pauseBtn.addEventListener('click', togglePause);
+        goQuizBtn.addEventListener('click', initQuiz);
+
+        modalRestartBtn.addEventListener('click', () => {
+            resultModal.classList.remove('active');
+            startGame(); 
+        });
+        
+        modalCloseBtn.addEventListener('click', () => {
+            resultModal.classList.remove('active'); 
+        });
+    </script>
+</body>
+</html>
